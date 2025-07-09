@@ -58,3 +58,19 @@ export const updateBookingStatus = async (bookingId, status) => {
     const response = await axios.put(`${API_BASE_URL}/bookings/${bookingId}`, { status }, { headers: getAuthHeaders() });
     return response.data;
 };
+
+// --- TIME SLOTS ---
+export const addTimeSlot = async (workshopId, data) => {
+    const response = await axios.post(`${API_BASE_URL}/timeslots/${workshopId}`, data, { headers: getAuthHeaders() });
+    return response.data;
+};
+
+export const updateTimeSlot = async (slotId, data) => {
+    const response = await axios.put(`${API_BASE_URL}/timeslots/${slotId}`, data, { headers: getAuthHeaders() });
+    return response.data;
+};
+
+export const deleteTimeSlot = async (slotId) => {
+    const response = await axios.delete(`${API_BASE_URL}/timeslots/${slotId}`, { headers: getAuthHeaders() });
+    return response.data;
+};

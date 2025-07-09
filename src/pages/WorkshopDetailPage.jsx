@@ -1,8 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getWorkshopById, softDeleteWorkshop, restoreWorkshop } from '../api/adminApi';
 import { Chip } from '@mui/material';
-import { ArrowLeftIcon, ArchiveBoxIcon, ArrowUturnUpIcon } from '@heroicons/react/24/solid';
+import { ArrowLeftIcon, ArchiveBoxIcon, ArrowUturnUpIcon, PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/solid';
+
+// Import all necessary functions from the centralized API file
+import { 
+  getWorkshopById, 
+  softDeleteWorkshop, 
+  restoreWorkshop,
+  deleteTimeSlot
+} from '../api/adminApi';
+
+// Import our custom components
+import TimeSlotFormModal from '../components/TimeSlotFormModal';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 const WorkshopDetailPage = () => {
   const { id } = useParams();
@@ -10,13 +21,26 @@ const WorkshopDetailPage = () => {
   const [workshop, setWorkshop] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  const [isTimeSlotModalOpen, setIsTimeSlotModalOpen] = useState(false);
+  const [editingSlot, setEditingSlot] = useState(null);
+
+  // State for the generic confirmation modal
+  const [confirmation, setConfirmation] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    confirmText: 'Confirm',
+    confirmColor: 'red',
+  });
 
   const fetchWorkshop = useCallback(async () => {
-    setLoading(true);
     try {
       const data = await getWorkshopById(id);
       setWorkshop(data);
     } catch (err) {
+      console.error(err)
       setError('Failed to fetch workshop details.');
     } finally {
       setLoading(false);
@@ -26,31 +50,68 @@ const WorkshopDetailPage = () => {
   useEffect(() => {
     fetchWorkshop();
   }, [fetchWorkshop]);
-  
-  const handleArchive = async () => {
-    if (window.confirm('Are you sure you want to archive this workshop?')) {
-        try {
-            await softDeleteWorkshop(id);
-            // Optimistically update UI
-            setWorkshop(prev => ({ ...prev, deletedAt: new Date().toISOString() }));
-        } catch (err) {
-            alert('Failed to archive workshop.');
-        }
-    }
+
+  const handleOpenConfirmation = (config) => {
+    setConfirmation({ isOpen: true, ...config });
   };
   
-  const handleRestore = async () => {
-    if (window.confirm('Are you sure you want to restore this workshop?')) {
-        try {
-            await restoreWorkshop(id);
-            // Optimistically update UI
-            setWorkshop(prev => ({ ...prev, deletedAt: null }));
-        } catch (err) {
-            alert('Failed to restore workshop.');
-        }
-    }
+  const handleCloseConfirmation = () => {
+    setConfirmation({ ...confirmation, isOpen: false });
   };
 
+  const handleArchive = () => {
+    handleOpenConfirmation({
+      title: 'Archive Workshop?',
+      message: 'This will hide the workshop from public view but preserve its data. You can restore it later.',
+      onConfirm: async () => {
+        await softDeleteWorkshop(id);
+        fetchWorkshop();
+      },
+      confirmText: 'Archive',
+      confirmColor: 'red',
+    });
+  };
+  
+  const handleRestore = () => {
+    handleOpenConfirmation({
+      title: 'Restore Workshop?',
+      message: 'This will make the workshop visible and bookable to the public again.',
+      onConfirm: async () => {
+        await restoreWorkshop(id);
+        fetchWorkshop();
+      },
+      confirmText: 'Restore',
+      confirmColor: 'green',
+    });
+  };
+
+  const handleDeleteTimeSlot = (slotId) => {
+    handleOpenConfirmation({
+        title: 'Delete Time Slot?',
+        message: 'This action cannot be undone. You can only delete slots with no active bookings.',
+        onConfirm: async () => {
+            try {
+                await deleteTimeSlot(slotId);
+                fetchWorkshop(); // Refresh on success
+            } catch (err) {
+                // If the API call fails, the user will be notified
+                alert(err.response?.data?.message || 'Failed to delete time slot.');
+            }
+        },
+        confirmText: 'Delete',
+        confirmColor: 'red',
+    });
+  };
+
+  const handleTimeSlotModalOpen = (slot = null) => {
+    setEditingSlot(slot);
+    setIsTimeSlotModalOpen(true);
+  };
+  
+  const handleTimeSlotModalClose = () => {
+    setIsTimeSlotModalOpen(false);
+    setEditingSlot(null);
+  };
 
   if (loading) {
     return (
@@ -67,13 +128,14 @@ const WorkshopDetailPage = () => {
   if (!workshop) return null;
 
   const isArchived = !!workshop.deletedAt;
+  const isExpired = new Date(workshop.date) <= new Date();
 
   return (
     <div className="min-h-screen bg-gray-100 py-8 font-poppins">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-6">
-          <button onClick={() => navigate(-1)} className="flex items-center text-sm text-gray-600 hover:text-teal-600 transition-colors">
+          <button onClick={() => navigate('/workshops')} className="flex items-center text-sm text-gray-600 hover:text-teal-600 transition-colors">
             <ArrowLeftIcon className="w-5 h-5 mr-2" />
             Back to Workshops
           </button>
@@ -92,28 +154,43 @@ const WorkshopDetailPage = () => {
 
             {/* Time Slots Card */}
             <div className="bg-white rounded-2xl shadow-lg p-6">
-               <h2 className="text-xl font-bold text-gray-800 mb-4">Time Slots</h2>
-               <ul className="space-y-2">
+               <div className="flex justify-between items-center mb-4">
+                 <h2 className="text-xl font-bold text-gray-800">Time Slots</h2>
+                 <button onClick={() => handleTimeSlotModalOpen()} className="bg-teal-100 text-teal-700 px-3 py-1 rounded-full text-sm font-semibold flex items-center space-x-2 hover:bg-teal-200">
+                    <PlusIcon className="w-4 h-4" />
+                    <span>New Slot</span>
+                 </button>
+               </div>
+               <ul className="space-y-3">
                 {workshop.timeSlots.map(slot => (
                     <li key={slot.id} className="p-3 bg-gray-50 rounded-lg flex justify-between items-center">
-                        <span className="font-medium text-gray-700">{slot.startTime} - {slot.endTime}</span>
-                        <span className="text-sm text-gray-500">{slot.availableSpots} / {workshop.maxCapacity} spots left</span>
+                        <div>
+                          <span className="font-medium text-gray-700">{slot.startTime} - {slot.endTime}</span>
+                          <span className="block text-xs text-gray-500">{slot.availableSpots} / {workshop.maxCapacity} spots left</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                           <button onClick={() => handleTimeSlotModalOpen(slot)} className="text-gray-400 hover:text-blue-500"><PencilSquareIcon className="w-5 h-5" /></button>
+                           <button onClick={() => handleDeleteTimeSlot(slot.id)} className="text-gray-400 hover:text-red-500"><TrashIcon className="w-5 h-5" /></button>
+                        </div>
                     </li>
                 ))}
+                {workshop.timeSlots.length === 0 && (
+                  <p className="text-center text-gray-500 py-4">No time slots have been added yet.</p>
+                )}
                </ul>
             </div>
             
             {/* Bookings Card */}
             <div className="bg-white rounded-2xl shadow-lg p-6">
-               <h2 className="text-xl font-bold text-gray-800 mb-4">Current Bookings ({workshop.bookings.length})</h2>
+               <h2 className="text-xl font-bold text-gray-800 mb-4">Current Bookings ({workshop.bookings.length || 0})</h2>
                <div className="max-h-96 overflow-y-auto">
-                    {workshop.bookings.length > 0 ? (
+                    {workshop.bookings && workshop.bookings.length > 0 ? (
                         <ul className="divide-y divide-gray-200">
                         {workshop.bookings.map(booking => (
                             <li key={booking.id} className="py-3 flex justify-between items-center">
                                 <div>
-                                    <p className="font-medium text-gray-900">{booking.user.name}</p>
-                                    <p className="text-sm text-gray-500">{booking.user.email}</p>
+                                    <p className="font-medium text-gray-900">{booking.user?.name || 'N/A'}</p>
+                                    <p className="text-sm text-gray-500">{booking.user?.email || 'N/A'}</p>
                                 </div>
                                 <Chip label={booking.status} size="small" color={booking.status === 'CONFIRMED' ? 'success' : 'warning'} />
                             </li>
@@ -124,7 +201,6 @@ const WorkshopDetailPage = () => {
                     )}
                </div>
             </div>
-
           </div>
 
           {/* Right Column: Status & Actions */}
@@ -133,15 +209,15 @@ const WorkshopDetailPage = () => {
                 <h2 className="text-xl font-bold text-gray-800">Status & Actions</h2>
                 <div className="flex items-center space-x-2">
                     <span className="font-medium">Status:</span>
-                    <Chip label={isArchived ? 'Archived' : 'Active'} color={isArchived ? 'default' : 'success'} />
+                    <Chip label={isExpired ? "Out Dated" : isArchived ? 'Archived' : 'Active'} color={(isArchived || isExpired) ? 'default' : 'success'} />
                 </div>
                 {isArchived ? (
-                    <button onClick={handleRestore} className="w-full bg-green-500 text-white px-4 py-2 rounded-lg font-poppins flex items-center justify-center space-x-2 hover:bg-green-600 transition-all duration-300">
+                    <button disabled={isExpired} onClick={handleRestore} className="w-full cursor-pointer bg-green-500 text-white px-4 py-2 rounded-lg font-poppins flex items-center justify-center space-x-2 hover:bg-green-600 transition-all duration-300">
                         <ArrowUturnUpIcon className="w-5 h-5" />
                         <span>Restore Workshop</span>
                     </button>
                 ) : (
-                    <button onClick={handleArchive} className="w-full bg-red-500 text-white px-4 py-2 rounded-lg font-poppins flex items-center justify-center space-x-2 hover:bg-red-600 transition-all duration-300">
+                    <button disabled={isExpired} onClick={handleArchive} className="w-full cursor-pointer bg-red-500 text-white px-4 py-2 rounded-lg font-poppins flex items-center justify-center space-x-2 hover:bg-red-600 transition-all duration-300">
                         <ArchiveBoxIcon className="w-5 h-5" />
                         <span>Archive Workshop</span>
                     </button>
@@ -150,6 +226,24 @@ const WorkshopDetailPage = () => {
           </div>
         </div>
       </div>
+
+      {/* --- RENDER OUR MODALS --- */}
+      <TimeSlotFormModal
+        isOpen={isTimeSlotModalOpen}
+        onClose={handleTimeSlotModalClose}
+        workshopId={workshop.id}
+        editingSlot={editingSlot}
+        onSave={fetchWorkshop}
+      />
+      <ConfirmationModal
+        isOpen={confirmation.isOpen}
+        onClose={handleCloseConfirmation}
+        onConfirm={confirmation.onConfirm}
+        title={confirmation.title}
+        message={confirmation.message}
+        confirmText={confirmation.confirmText}
+        confirmColor={confirmation.confirmColor}
+      />
     </div>
   );
 };

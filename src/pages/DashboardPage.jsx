@@ -111,7 +111,7 @@ const DashboardPage = () => {
             <p className="text-3xl font-bold mt-2">{stats.totalBookings}</p>
             <button
               onClick={() => navigate('/bookings')}
-              className="mt-4 text-sm text-teal-100 hover:underline font-poppins"
+              className="mt-4 text-sm text-white hover:underline cursor-pointer font-poppins"
             >
               View Details
             </button>
@@ -121,21 +121,16 @@ const DashboardPage = () => {
             <p className="text-3xl font-bold mt-2">{stats.totalWorkshops}</p>
             <button
               onClick={() => navigate('/workshops')}
-              className="mt-4 text-sm text-indigo-100 hover:underline font-poppins"
+              className="mt-4 text-sm text-indigo-100 hover:underline cursor-pointer font-poppins"
             >
               View Details
             </button>
           </div>
-          <div className="bg-amber-400 text-white p-6 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+          <div className="bg-amber-400 p-6 rounded-2xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
             <h3 className="text-lg font-medium font-poppins">Slots Filled</h3>
             <p className="text-3xl font-bold mt-2">{stats.slotsFilled}</p>
             <p className="text-sm mt-1">{stats.slotsFilledPercentage}% Capacity</p>
-            <button
-              onClick={() => navigate('/slots')}
-              className="mt-4 text-sm text-amber-100 hover:underline font-poppins"
-            >
-              View Details
-            </button>
+            
           </div>
         </div>
 

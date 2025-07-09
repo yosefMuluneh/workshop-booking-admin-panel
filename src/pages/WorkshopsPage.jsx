@@ -152,13 +152,22 @@ const WorkshopsPage = () => {
       sortable: true,
     },
     {
+      field: '_count',
+      headerName: 'Bookings',
+      type: 'number',
+      width: 120,
+      filterable: true,
+      sortable: true,
+      valueGetter: (value) => ( value ? value?.bookings : 0)
+    },
+    {
       field: 'status',
       headerName: 'Status',
       width: 150,
       filterable: true,
       sortable: true,
       renderCell: (params) => (
-        params.row.deletedAt ? (
+       new Date(params.row.date) < new Date() ? (<Chip label="Out Dated" color="default" size="small" />) : params.row.deletedAt ? (
           <Chip label="Archived" color="default" size="small" />
         ) : (
           <Chip label="Active" color="success" size="small" />
