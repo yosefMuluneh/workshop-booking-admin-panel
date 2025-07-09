@@ -1,11 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getAdminWorkshops, createWorkshop } from '../api/adminApi';
-import WorkshopForm from '../components/WorkshopForm';
-import { PlusIcon } from '@heroicons/react/24/solid';
+import { getAllBookings, updateBookingStatus } from '../api/adminApi';
 import { DataGrid } from '@mui/x-data-grid';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
-import { Chip } from '@mui/material';
+import { EllipsisVerticalIcon } from '@heroicons/react/24/solid';
 
 // Custom MUI theme with Tailwind-like styling
 const theme = createTheme({
@@ -61,108 +58,146 @@ const theme = createTheme({
         },
       },
     },
-    MuiChip: {
-      styleOverrides: {
-        root: {
-          fontFamily: 'Poppins, sans-serif',
-          fontSize: '0.875rem',
-          padding: '4px 12px',
-          borderRadius: '9999px',
-        },
-        colorSuccess: {
-          backgroundColor: '#dcfce7',
-          color: '#15803d',
-        },
-        colorDefault: {
-          backgroundColor: '#e5e7eb',
-          color: '#4b5563',
-        },
-      },
-    },
   },
 });
 
-const WorkshopsPage = () => {
-  const [workshops, setWorkshops] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formSubmitting, setFormSubmitting] = useState(false);
-  const [formSuccess, setFormSuccess] = useState('');
-  const [formError, setFormError] = useState('');
-  const navigate = useNavigate();
+const BookingStatusChip = ({ status }) => {
+  const statusMap = {
+    PENDING: { label: 'Pending', bgColor: 'bg-amber-100', textColor: 'text-amber-700' },
+    CONFIRMED: { label: 'Confirmed', bgColor: 'bg-green-100', textColor: 'text-green-700' },
+    CANCELED: { label: 'Canceled', bgColor: 'bg-red-100', textColor: 'text-red-700' },
+  };
+  const { label, bgColor, textColor } = statusMap[status] || {
+    label: 'Unknown',
+    bgColor: 'bg-gray-200',
+    textColor: 'text-gray-700',
+  };
+  return (
+    <span
+      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-poppins ${bgColor} ${textColor}`}
+    >
+      {label}
+    </span>
+  );
+};
 
-  const fetchWorkshops = useCallback(async () => {
+const BookingsPage = () => {
+  const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 10 });
+  const [bookingsData, setBookingsData] = useState({ data: [], total: 0 });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [rowCountState, setRowCountState] = useState(bookingsData.total || 0);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedBookingId, setSelectedBookingId] = useState(null);
+
+  const fetchBookings = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getAdminWorkshops();
-      setWorkshops(data);
+      const apiParams = {
+        page: paginationModel.page + 1, // API is 1-based, DataGrid is 0-based
+        limit: paginationModel.pageSize,
+      };
+      const response = await getAllBookings(apiParams);
+      setBookingsData({ data: response.data, total: response.pagination.total });
     } catch (err) {
-      console.error('Error fetching workshops:', err);
-      setError('Failed to fetch workshops.');
+      console.error('Error fetching bookings:', err);
+      setError('Failed to fetch bookings.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [paginationModel]);
 
   useEffect(() => {
-    fetchWorkshops();
-  }, [fetchWorkshops]);
+    fetchBookings();
+  }, [fetchBookings]);
 
-  const handleOpenModal = () => setIsModalOpen(true);
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setFormSuccess('');
-    setFormError('');
-    setFormSubmitting(false);
+  useEffect(() => {
+    setRowCountState((prev) => (bookingsData.total !== undefined ? bookingsData.total : prev));
+  }, [bookingsData.total]);
+
+  const handleMenuClick = (event, bookingId) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedBookingId(bookingId);
   };
 
-  const handleCreateWorkshop = async (data) => {
-    setFormSubmitting(true);
-    setFormSuccess('');
-    setFormError('');
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedBookingId(null);
+  };
+
+  const handleStatusUpdate = async (newStatus) => {
+    if (!selectedBookingId) return;
     try {
-      const payload = { ...data, date: new Date(data.date).toISOString() };
-      const newWorkshop = await createWorkshop(payload);
-      setWorkshops((prevWorkshops) => [newWorkshop, ...prevWorkshops]);
-      setFormSuccess('Workshop created successfully!');
-      setTimeout(handleCloseModal, 1500);
+      await updateBookingStatus(selectedBookingId, newStatus);
+      setBookingsData((prev) => ({
+        ...prev,
+        data: prev.data.map((booking) =>
+          booking.id === selectedBookingId ? { ...booking, status: newStatus } : booking
+        ),
+      }));
     } catch (err) {
-      setFormError(err.response?.data?.message || 'Failed to create workshop.');
-      setFormSubmitting(false);
+      console.error('Failed to update status', err);
+    } finally {
+      handleMenuClose();
     }
   };
 
   const columns = [
-    { field: 'title', headerName: 'Title', flex: 1, minWidth: 200, filterable: true, sortable: true },
     {
-      field: 'date',
-      headerName: 'Date',
-      width: 150,
+      field: 'user.name',
+      headerName: 'Customer Name',
+      flex: 1,
+      minWidth: 150,
       filterable: true,
       sortable: true,
-      valueGetter: (value) => (value ? new Date(value).toLocaleDateString() : 'N/A'),
+      valueGetter: (value, row) => row.user?.name || 'N/A',
     },
     {
-      field: 'maxCapacity',
-      headerName: 'Capacity',
-      type: 'number',
-      width: 120,
+      field: 'user.email',
+      headerName: 'Customer Email',
+      flex: 1.5,
+      minWidth: 200,
       filterable: true,
       sortable: true,
+      valueGetter: (value, row) => row.user?.email || 'N/A',
+    },
+    {
+      field: 'workshop.title',
+      headerName: 'Workshop',
+      flex: 1.5,
+      minWidth: 200,
+      filterable: true,
+      sortable: true,
+      valueGetter: (value, row) => row.workshop?.title || 'N/A',
+    },
+    {
+      field: 'timeSlot',
+      headerName: 'Time Slot',
+      flex: 1,
+      minWidth: 150,
+      sortable: false,
+      valueGetter: (value, row) => `${row.timeSlot?.startTime} - ${row.timeSlot?.endTime}`,
     },
     {
       field: 'status',
       headerName: 'Status',
-      width: 150,
+      width: 120,
       filterable: true,
       sortable: true,
+      renderCell: (params) => <BookingStatusChip status={params.row.status} />,
+    },
+    {
+      field: 'actions',
+      headerName: 'Actions',
+      width: 100,
+      sortable: false,
       renderCell: (params) => (
-        params.row.deletedAt ? (
-          <Chip label="Archived" color="default" size="small" />
-        ) : (
-          <Chip label="Active" color="success" size="small" />
-        )
+        <button
+          onClick={(e) => handleMenuClick(e, params.row.id)}
+          className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-100 rounded-full transition-all duration-300"
+        >
+          <EllipsisVerticalIcon className="w-5 h-5" />
+        </button>
       ),
     },
   ];
@@ -175,21 +210,14 @@ const WorkshopsPage = () => {
           <div className="flex items-center">
             <img
               src="/images/cover.jpg"
-              alt="Workshops"
+              alt="Bookings"
               className="h-10 w-10 rounded-full object-cover mr-3"
               onError={() => console.error('Header image failed to load: /images/workshop.jpg')}
             />
             <h1 className="text-3xl font-bold text-gray-800 font-poppins sm:text-2xl">
-              Workshops
+              Bookings Management
             </h1>
           </div>
-          <button
-            onClick={handleOpenModal}
-            className="bg-teal-500 text-white px-4 py-2 rounded-lg font-poppins flex items-center space-x-2 hover:bg-teal-600 transition-all duration-300 sm:px-3"
-          >
-            <PlusIcon className="w-5 h-5" />
-            <span>Create Workshop</span>
-          </button>
         </div>
 
         {/* Error Alert */}
@@ -203,23 +231,21 @@ const WorkshopsPage = () => {
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
           <ThemeProvider theme={theme}>
             <DataGrid
-              id="workshops-grid"
-              rows={workshops}
+              rows={bookingsData.data}
               columns={columns}
               loading={loading}
-              getRowId={(row) => row.id}
-              initialState={{
-                pagination: { paginationModel: { pageSize: 10 } },
-              }}
+              rowCount={rowCountState}
               pageSizeOptions={[10, 25, 50]}
+              paginationModel={paginationModel}
+              paginationMode="server"
+              onPaginationModelChange={setPaginationModel}
+              getRowId={(row) => row.id}
               disableRowSelectionOnClick
-              onRowClick={(params) => navigate(`/workshops/${params.id}`)}
-              className="h-[650px] w-full my-2"
-              autoHeight={false}
+              className="h-[650px] w-full"
               slots={{
                 noRowsOverlay: () => (
                   <div className="flex items-center justify-center h-full text-gray-600 font-poppins">
-                    No workshops available.
+                    No bookings available.
                   </div>
                 ),
                 loadingOverlay: () => (
@@ -251,49 +277,33 @@ const WorkshopsPage = () => {
           </ThemeProvider>
         </div>
 
-        {/* Modal */}
-        {isModalOpen && (
-          <div 
-           role="dialog" 
-           aria-modal="true"
-           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 transition-all duration-300">
-            <div className="bg-white w-full max-w-xl mx-4 p-6 rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto">
-              {formSubmitting && !formSuccess && !formError && (
-                <div className="flex justify-center my-4">
-                  <svg
-                    className="animate-spin h-8 w-8 text-teal-500"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                </div>
-              )}
-              {formSuccess && (
-                <div className="bg-green-100 text-green-700 p-4 rounded-lg mb-4 font-poppins text-sm">
-                  {formSuccess}
-                </div>
-              )}
-              {formError && (
-                <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-4 font-poppins text-sm">
-                  {formError}
-                </div>
-              )}
-              <WorkshopForm onSubmit={handleCreateWorkshop} onCancel={handleCloseModal} />
-            </div>
+        {/* Status Update Menu */}
+        {anchorEl && (
+          <div
+            className="fixed z-50 bg-white shadow-lg rounded-lg w-48 sm:w-40 font-poppins border border-gray-200"
+            style={{
+              top: anchorEl.getBoundingClientRect().bottom + window.scrollY,
+              left: anchorEl.getBoundingClientRect().left + window.scrollX,
+            }}
+          >
+            <button
+              onClick={() => handleStatusUpdate('CONFIRMED')}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-green-100 hover:text-green-700 transition-all duration-200"
+            >
+              Set to Confirmed
+            </button>
+            <button
+              onClick={() => handleStatusUpdate('CANCELED')}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-red-100 hover:text-red-700 transition-all duration-200"
+            >
+              Set to Canceled
+            </button>
+            <button
+              onClick={() => handleStatusUpdate('PENDING')}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-amber-100 hover:text-amber-700 transition-all duration-200"
+            >
+              Set to Pending
+            </button>
           </div>
         )}
       </div>
@@ -301,4 +311,4 @@ const WorkshopsPage = () => {
   );
 };
 
-export default WorkshopsPage;
+export default BookingsPage;
