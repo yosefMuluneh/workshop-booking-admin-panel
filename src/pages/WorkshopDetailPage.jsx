@@ -1,7 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Chip } from '@mui/material';
-import { ArrowLeftIcon, ArchiveBoxIcon, ArrowUturnUpIcon, PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/solid';
+import { 
+  ArrowLeftIcon, 
+  ArchiveBoxIcon, 
+  ArrowUturnUpIcon, 
+  PlusIcon, 
+  PencilSquareIcon, 
+  TrashIcon,
+  CalendarDaysIcon,
+  ClockIcon,
+  UserGroupIcon,
+  ChartBarIcon,
+  EyeIcon,
+  SparklesIcon
+} from '@heroicons/react/24/solid';
 
 // Import all necessary functions from the centralized API file
 import { 
@@ -115,14 +128,28 @@ const WorkshopDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <svg className="animate-spin h-10 w-10 text-teal-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+          <p className="text-slate-600 font-medium">Loading workshop details...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
-    return <div className="bg-red-100 text-red-700 p-4 rounded-lg m-8">{error}</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-xl shadow-sm max-w-md text-center">
+          <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.267 19.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <p className="font-medium">{error}</p>
+        </div>
+      </div>
+    );
   }
 
   if (!workshop) return null;
@@ -131,25 +158,75 @@ const WorkshopDetailPage = () => {
   const isExpired = new Date(workshop.date) <= new Date();
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8 font-poppins">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-6">
-          <button onClick={() => navigate('/workshops')} className="flex items-center text-sm text-gray-600 hover:text-teal-600 transition-colors">
-            <ArrowLeftIcon className="w-5 h-5 mr-2" />
-            Back to Workshops
+        {/* Modern Header with Breadcrumb */}
+        <div className="mb-8">
+          <button 
+            onClick={() => navigate('/workshops')} 
+            className="flex items-center space-x-2 text-slate-600 hover:text-indigo-600 transition-all duration-200 group mb-6"
+          >
+            <div className="p-2 rounded-lg bg-white shadow-sm group-hover:shadow-md transition-all duration-200">
+              <ArrowLeftIcon className="w-4 h-4" />
+            </div>
+            <span className="font-medium">Back to Workshops</span>
           </button>
+          
+          {/* Workshop Header Card */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-white/20 p-6 mb-8">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center">
+                  <SparklesIcon className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-slate-800 mb-2">{workshop.title}</h1>
+                  <div className="flex items-center space-x-4 text-slate-600">
+                    <div className="flex items-center space-x-2">
+                      <CalendarDaysIcon className="w-4 h-4" />
+                      <span className="font-medium">
+                        {new Date(workshop.date).toLocaleDateString('en-US', { 
+                          weekday: 'long',
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        })}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <UserGroupIcon className="w-4 h-4" />
+                      <span>{workshop.maxCapacity} max capacity</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Status Badge */}
+              <div className="text-right">
+                <Chip 
+                  label={isExpired ? "Expired" : isArchived ? 'Archived' : 'Active'} 
+                  color={(isArchived || isExpired) ? 'default' : 'success'}
+                  className="mb-2"
+                />
+                <p className="text-sm text-slate-500">
+                  {workshop.bookings?.length || 0} total bookings
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column: Details & Bookings */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Workshop Details Card */}
-            <div className="bg-white rounded-2xl shadow-lg p-6">
-              <h1 className="text-3xl font-bold text-gray-800 mb-2">{workshop.title}</h1>
-              <p className="text-gray-500 mb-4">{new Date(workshop.date).toLocaleDateString('en-US', { dateStyle: 'full' })}</p>
-              <p className="text-gray-700 leading-relaxed">{workshop.description}</p>
+          <div className="lg:col-span-2 space-y-6">
+            {/* Workshop Description Card */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-white/20 p-6">
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                <h2 className="text-xl font-bold text-slate-800">Description</h2>
+              </div>
+              <p className="text-slate-700 leading-relaxed text-lg">{workshop.description}</p>
             </div>
 
             {/* Time Slots Card */}
@@ -203,25 +280,68 @@ const WorkshopDetailPage = () => {
             </div>
           </div>
 
-          {/* Right Column: Status & Actions */}
+          {/* Modern Right Column: Quick Stats & Actions */}
           <div className="lg:col-span-1">
-             <div className="bg-white rounded-2xl shadow-lg p-6 space-y-4 sticky top-8">
-                <h2 className="text-xl font-bold text-gray-800">Status & Actions</h2>
-                <div className="flex items-center space-x-2">
-                    <span className="font-medium">Status:</span>
-                    <Chip label={isExpired ? "Out Dated" : isArchived ? 'Archived' : 'Active'} color={(isArchived || isExpired) ? 'default' : 'success'} />
+             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-sm border border-white/20 p-6 space-y-6 sticky top-8">
+                {/* Quick Stats */}
+                <div>
+                  <h2 className="text-lg font-bold text-slate-800 mb-4">Quick Stats</h2>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <ClockIcon className="w-4 h-4 text-indigo-500" />
+                        <span className="text-sm font-medium text-slate-700">Time Slots</span>
+                      </div>
+                      <span className="font-bold text-slate-800">{workshop.timeSlots.length}</span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <UserGroupIcon className="w-4 h-4 text-green-500" />
+                        <span className="text-sm font-medium text-slate-700">Total Bookings</span>
+                      </div>
+                      <span className="font-bold text-slate-800">{workshop.bookings?.length || 0}</span>
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <ChartBarIcon className="w-4 h-4 text-purple-500" />
+                        <span className="text-sm font-medium text-slate-700">Capacity</span>
+                      </div>
+                      <span className="font-bold text-slate-800">{workshop.maxCapacity}</span>
+                    </div>
+                  </div>
                 </div>
-                {isArchived ? (
-                    <button disabled={isExpired} onClick={handleRestore} className="w-full cursor-pointer bg-green-500 text-white px-4 py-2 rounded-lg font-poppins flex items-center justify-center space-x-2 hover:bg-green-600 transition-all duration-300">
-                        <ArrowUturnUpIcon className="w-5 h-5" />
-                        <span>Restore Workshop</span>
-                    </button>
-                ) : (
-                    <button disabled={isExpired} onClick={handleArchive} className="w-full cursor-pointer bg-red-500 text-white px-4 py-2 rounded-lg font-poppins flex items-center justify-center space-x-2 hover:bg-red-600 transition-all duration-300">
-                        <ArchiveBoxIcon className="w-5 h-5" />
-                        <span>Archive Workshop</span>
-                    </button>
-                )}
+
+                {/* Actions */}
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800 mb-4">Actions</h3>
+                  {isArchived ? (
+                      <button 
+                        disabled={isExpired} 
+                        onClick={handleRestore} 
+                        className="w-full bg-gradient-to-r from-emerald-500 to-green-600 text-white px-4 py-3 rounded-xl flex items-center justify-center space-x-2 hover:from-emerald-600 hover:to-green-700 transition-all duration-300 hover:scale-105 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                      >
+                          <ArrowUturnUpIcon className="w-5 h-5" />
+                          <span className="font-medium">Restore Workshop</span>
+                      </button>
+                  ) : (
+                      <button 
+                        disabled={isExpired} 
+                        onClick={handleArchive} 
+                        className="w-full bg-gradient-to-r from-red-500 to-pink-500 text-white px-4 py-3 rounded-xl flex items-center justify-center space-x-2 hover:from-red-600 hover:to-pink-600 transition-all duration-300 hover:scale-105 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                      >
+                          <ArchiveBoxIcon className="w-5 h-5" />
+                          <span className="font-medium">Archive Workshop</span>
+                      </button>
+                  )}
+                  
+                  {isExpired && (
+                    <p className="text-xs text-slate-500 mt-2 text-center">
+                      Expired workshops cannot be modified
+                    </p>
+                  )}
+                </div>
              </div>
           </div>
         </div>

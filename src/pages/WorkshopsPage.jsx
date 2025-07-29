@@ -177,39 +177,51 @@ const WorkshopsPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8">
+    <div className="min-h-screen py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center">
-            <img
-              src="/images/cover.jpg"
-              alt="Workshops"
-              className="h-10 w-10 rounded-full object-cover mr-3"
-              onError={() => console.error('Header image failed to load: /images/workshop.jpg')}
-            />
-            <h1 className="text-3xl font-bold text-gray-800 font-poppins sm:text-2xl">
-              Workshops
-            </h1>
+        {/* Modern Header */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center">
+                <img
+                  src="/images/cover.jpg"
+                  alt="Workshops"
+                  className="w-8 h-8 rounded-lg object-cover"
+                  onError={() => console.error('Header image failed to load: /images/cover.jpg')}
+                />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800 mb-1">
+                  Workshop Management
+                </h1>
+                <p className="text-slate-600 text-sm">
+                  Create, manage, and track your workshops
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleOpenModal}
+              className="flex items-center space-x-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 hover:scale-105 shadow-sm"
+            >
+              <PlusIcon className="w-5 h-5" />
+              <span className="font-medium">Create Workshop</span>
+            </button>
           </div>
-          <button
-            onClick={handleOpenModal}
-            className="bg-teal-500 text-white px-4 py-2 rounded-lg font-poppins flex items-center space-x-2 hover:bg-teal-600 transition-all duration-300 sm:px-3"
-          >
-            <PlusIcon className="w-5 h-5" />
-            <span>Create Workshop</span>
-          </button>
         </div>
 
         {/* Error Alert */}
         {error && (
-          <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-6 font-poppins text-sm">
-            {error}
+          <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl mb-6 text-sm flex items-center space-x-2">
+            <svg className="w-5 h-5 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.267 19.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <span>{error}</span>
           </div>
         )}
 
-        {/* Data Grid */}
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+        {/* Modern Data Grid */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <ThemeProvider theme={theme}>
             <DataGrid
               id="workshops-grid"
@@ -223,12 +235,22 @@ const WorkshopsPage = () => {
               pageSizeOptions={[10, 25, 50]}
               disableRowSelectionOnClick
               onRowClick={(params) => navigate(`/workshops/${params.id}`)}
-              className="h-[650px] w-full my-2"
+              className="h-[650px] w-full"
               autoHeight={false}
               slots={{
                 noRowsOverlay: () => (
-                  <div className="flex items-center justify-center h-full text-gray-600 font-poppins">
-                    No workshops available.
+                  <div className="flex flex-col items-center justify-center h-full text-slate-600">
+                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                      <PlusIcon className="w-8 h-8 text-slate-400" />
+                    </div>
+                    <p className="text-lg font-medium mb-2">No workshops found</p>
+                    <p className="text-sm text-slate-500 mb-4">Get started by creating your first workshop</p>
+                    <button
+                      onClick={handleOpenModal}
+                      className="bg-indigo-600 text-white px-4 py-2 mb-12 rounded-lg hover:bg-indigo-700 transition-colors duration-200"
+                    >
+                      Create Workshop
+                    </button>
                   </div>
                 ),
                 loadingOverlay: () => (
@@ -301,10 +323,21 @@ const WorkshopsPage = () => {
                   {formError}
                 </div>
               )}
-              <WorkshopForm onSubmit={handleCreateWorkshop} onCancel={handleCloseModal} />
+              <WorkshopForm 
+                isOpen={false}
+                onSubmit={handleCreateWorkshop} 
+                onCancel={handleCloseModal} 
+              />
             </div>
           </div>
         )}
+        
+        {/* New Enhanced Modal */}
+        <WorkshopForm 
+          isOpen={isModalOpen}
+          onSubmit={handleCreateWorkshop} 
+          onCancel={handleCloseModal} 
+        />
       </div>
     </div>
   );
