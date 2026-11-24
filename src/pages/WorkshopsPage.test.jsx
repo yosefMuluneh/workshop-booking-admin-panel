@@ -13,15 +13,27 @@ vi.mock('../api/adminApi');
 
 // Mock the WorkshopForm component. We don't need to test its internals here.
 vi.mock('../components/WorkshopForm', () => ({
-    default: ({ onSubmit, onCancel }) => (
-        <form data-testid="workshop-form" onSubmit={(e) => {
-            e.preventDefault();
-            onSubmit({ title: 'New Mocked Workshop', date: '2025-01-01' /* ...other data */ });
-        }}>
-            <button type="submit">Submit Mock Form</button>
-            <button type="button" onClick={onCancel}>Cancel</button>
-        </form>
-    )
+    default: ({ onSubmit, onCancel, isOpen = true }) => {
+        if (!isOpen) return null;
+
+        return (
+            <form
+                data-testid="workshop-form"
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    onSubmit({
+                        title: 'New Mocked Workshop',
+                        date: '2025-01-01',
+                    });
+                }}
+            >
+                <button type="submit">Submit Mock Form</button>
+                <button type="button" onClick={onCancel}>
+                    Cancel
+                </button>
+            </form>
+        );
+    },
 }));
 
 const mockWorkshops = [
@@ -41,7 +53,7 @@ describe('WorkshopsPage', () => {
 
     it('should display the main page title and create button', async () => {
         renderWithProviders(<WorkshopsPage />);
-        expect(await screen.findByRole('heading', { name: /workshops/i })).toBeInTheDocument();
+        expect(await screen.findByRole('heading', { name: /workshop management/i })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /create workshop/i })).toBeInTheDocument();
     });
 

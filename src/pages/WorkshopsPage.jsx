@@ -64,7 +64,7 @@ const StatusChip = ({ label, tone = 'neutral' }) => {
     neutral: 'bg-[#f0f2ef] text-[#727b72]',
   };
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${tones[tone]}`}>
+    <span className={`inline-flex h-7 min-h-7 max-h-7 shrink-0 self-center items-center rounded-full px-3 text-[11px] leading-none font-semibold ${tones[tone]}`}>
       <span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${tone === 'success' ? 'bg-[#5b9068]' : 'bg-[#9aa198]'}`} />
       {label}
     </span>

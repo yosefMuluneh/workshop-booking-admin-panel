@@ -44,8 +44,8 @@ const StatusPill = ({ archived, expired }) => {
   const dot = archived || expired ? 'bg-[#9aa198]' : 'bg-[#5b9068]';
 
   return (
-    <span className={\`inline-flex h-7 shrink-0 items-center gap-2 rounded-full px-3 text-[11px] font-semibold leading-none \${styles}\`}>
-      <span className={\`h-1.5 w-1.5 rounded-full \${dot}\`} />
+    <span className={`inline-flex h-7 shrink-0 items-center gap-2 rounded-full px-3 text-[11px] font-semibold leading-none ${styles}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
       {label}
     </span>
   );
@@ -60,7 +60,7 @@ const BookingStatusPill = ({ status }) => {
   const style = styles[status] || 'bg-[#f0f2ef] text-[#727b72]';
 
   return (
-    <span className={\`inline-flex h-7 shrink-0 items-center rounded-full px-3 text-[11px] font-semibold leading-none \${style}\`}>
+    <span className={`inline-flex h-7 shrink-0 items-center rounded-full px-3 text-[11px] font-semibold leading-none ${style}`}>
       {status || 'Unknown'}
     </span>
   );
@@ -184,7 +184,7 @@ const WorkshopDetailPage = () => {
   const handleDeleteTimeSlot = (slot) => {
     openConfirmation({
       title: 'Delete time slot?',
-      message: \`Delete the \${slot.startTime} – \${slot.endTime} time slot? This can only be done when it has no active bookings.\`,
+      message: `Delete the ${slot.startTime} – ${slot.endTime} time slot? This can only be done when it has no active bookings.`,
       confirmText: 'Delete time slot',
       confirmColor: 'red',
       onConfirm: async () => {
@@ -318,7 +318,7 @@ const WorkshopDetailPage = () => {
 
           <SectionCard
             title="Time slots"
-            subtitle={\`\${timeSlots.length} scheduled session\${timeSlots.length === 1 ? '' : 's'}\`}
+            subtitle={`${timeSlots.length} scheduled session ${timeSlots.length === 1 ? '' : 's'}`}
             action={
               <button
                 type="button"
@@ -349,7 +349,7 @@ const WorkshopDetailPage = () => {
                       <button
                         type="button"
                         onClick={() => handleTimeSlotModalOpen(slot)}
-                        aria-label={\`Edit time slot \${slot.startTime} to \${slot.endTime}\`}
+                        aria-label={`Edit time slot ${slot.startTime} to ${slot.endTime}`}
                         className="rounded-lg p-2 text-[#899188] transition hover:bg-[#f1f4f0] hover:text-[#426b55]"
                       >
                         <PencilSquareIcon className="h-4 w-4" />
@@ -357,7 +357,7 @@ const WorkshopDetailPage = () => {
                       <button
                         type="button"
                         onClick={() => handleDeleteTimeSlot(slot)}
-                        aria-label={\`Delete time slot \${slot.startTime} to \${slot.endTime}\`}
+                        aria-label={`Delete time slot ${slot.startTime} to ${slot.endTime}`}
                         className="rounded-lg p-2 text-[#899188] transition hover:bg-[#fbefed] hover:text-[#a34d40]"
                       >
                         <TrashIcon className="h-4 w-4" />
@@ -379,7 +379,7 @@ const WorkshopDetailPage = () => {
 
           <SectionCard
             title="Bookings"
-            subtitle={\`\${bookings.length} reservation\${bookings.length === 1 ? '' : 's'} for this workshop\`}
+            subtitle={`${bookings.length} reservation${bookings.length === 1 ? '' : 's'} for this workshop`}
           >
             {bookings.length > 0 ? (
               <div className="divide-y divide-[#eef0ec]">

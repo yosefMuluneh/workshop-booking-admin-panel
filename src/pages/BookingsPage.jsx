@@ -56,7 +56,7 @@ const BookingStatus = ({ status }) => {
   const config = statusConfig[status] || { label: 'Unknown', icon: ClockIcon, style: 'bg-[#f0f2ef] text-[#727b72]' };
   const Icon = config.icon;
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${config.style}`}>
+    <span className={`inline-flex h-7 min-h-7 max-h-7 shrink-0 self-center items-center gap-1.5 rounded-full px-3 text-[11px] leading-none font-semibold ${config.style}`}>
       <Icon className="h-3.5 w-3.5" />
       {config.label}
     </span>
