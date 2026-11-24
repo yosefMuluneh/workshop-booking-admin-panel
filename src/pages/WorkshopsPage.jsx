@@ -253,6 +253,7 @@ const WorkshopsPage = () => {
           isOpen
           onSubmit={handleCreateWorkshop}
           onCancel={handleCloseModal}
+          isSubmitting={formSubmitting}
         />
       )}
     </div>
