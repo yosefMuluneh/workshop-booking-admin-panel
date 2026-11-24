@@ -2,81 +2,63 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getAllBookings, updateBookingStatus } from '../api/adminApi';
 import { DataGrid } from '@mui/x-data-grid';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
-import { EllipsisVerticalIcon } from '@heroicons/react/24/solid';
+import {
+  EllipsisVerticalIcon,
+  ClipboardDocumentListIcon,
+  ArrowPathIcon,
+  CheckIcon,
+  XMarkIcon,
+  ClockIcon,
+} from '@heroicons/react/24/outline';
 
-// Custom MUI theme with Tailwind-like styling
 const theme = createTheme({
-  typography: {
-    fontFamily: 'Poppins, sans-serif',
-  },
+  typography: { fontFamily: "'DM Sans', sans-serif" },
+  palette: { primary: { main: '#426b55' } },
   components: {
     MuiDataGrid: {
       styleOverrides: {
         root: {
-          backgroundColor: '#ffffff',
-          borderRadius: '16px',
-          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-          border: 'none',
-          '& .MuiDataGrid-cell': {
-            padding: '16px',
-            color: '#374151',
-            fontFamily: 'Poppins, sans-serif',
-            transition: 'background-color 0.2s ease',
-          },
-          '& .MuiDataGrid-columnHeader': {
-            backgroundColor: '#f9fafb',
-            color: '#374151',
-            fontWeight: 600,
-            fontFamily: 'Poppins, sans-serif',
-            padding: '16px',
+          border: 0,
+          color: '#303a32',
+          fontSize: '13px',
+          '& .MuiDataGrid-columnHeaders': {
+            backgroundColor: '#f8f9f7',
+            borderBottom: '1px solid #e8ebe6',
           },
           '& .MuiDataGrid-columnHeaderTitle': {
-            fontWeight: 600,
+            color: '#707a70',
+            fontSize: '11px',
+            fontWeight: 700,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
           },
-          '& .MuiDataGrid-row:hover': {
-            backgroundColor: '#f3f4f6',
-            cursor: 'pointer',
+          '& .MuiDataGrid-cell': {
+            borderColor: '#eef0ec',
+            paddingLeft: '18px',
+            paddingRight: '18px',
           },
-          '& .MuiDataGrid-footerContainer': {
-            backgroundColor: '#f9fafb',
-            borderTop: '1px solid #e5e7eb',
-            fontFamily: 'Poppins, sans-serif',
-          },
-          '& .MuiDataGrid-toolbarContainer': {
-            padding: '16px',
-            backgroundColor: '#f9fafb',
-          },
-          '& .MuiDataGrid-menuIcon': {
-            color: '#374151',
-          },
-          '& .MuiDataGrid-sortIcon': {
-            color: '#374151',
-          },
-          '& .MuiDataGrid-filterIcon': {
-            color: '#374151',
-          },
+          '& .MuiDataGrid-row:hover': { backgroundColor: '#f8faf7' },
+          '& .MuiDataGrid-footerContainer': { borderTop: '1px solid #e8ebe6' },
+          '& .MuiTablePagination-root': { color: '#707a70', fontSize: '12px' },
         },
       },
     },
   },
 });
 
-const BookingStatusChip = ({ status }) => {
-  const statusMap = {
-    PENDING: { label: 'Pending', bgColor: 'bg-amber-100', textColor: 'text-amber-700' },
-    CONFIRMED: { label: 'Confirmed', bgColor: 'bg-green-100', textColor: 'text-green-700' },
-    CANCELED: { label: 'Canceled', bgColor: 'bg-red-100', textColor: 'text-red-700' },
-  };
-  const { label, bgColor, textColor } = statusMap[status] || {
-    label: 'Unknown',
-    bgColor: 'bg-gray-200',
-    textColor: 'text-gray-700',
-  };
+const statusConfig = {
+  PENDING: { label: 'Pending', icon: ClockIcon, style: 'bg-[#fbf4e8] text-[#98713a]' },
+  CONFIRMED: { label: 'Confirmed', icon: CheckIcon, style: 'bg-[#edf4ee] text-[#426b55]' },
+  CANCELED: { label: 'Canceled', icon: XMarkIcon, style: 'bg-[#fbefed] text-[#a34d40]' },
+};
+
+const BookingStatus = ({ status }) => {
+  const config = statusConfig[status] || { label: 'Unknown', icon: ClockIcon, style: 'bg-[#f0f2ef] text-[#727b72]' };
+  const Icon = config.icon;
   return (
-    <span
-      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-poppins ${bgColor} ${textColor}`}
-    >
-      {label}
+    <span className={`inline-flex h-7 min-h-7 max-h-7 shrink-0 self-center items-center gap-1.5 rounded-full px-3 text-[11px] leading-none font-semibold ${config.style}`}>
+      <Icon className="h-3.5 w-3.5" />
+      {config.label}
     </span>
   );
 };
@@ -84,24 +66,25 @@ const BookingStatusChip = ({ status }) => {
 const BookingsPage = () => {
   const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 10 });
   const [bookingsData, setBookingsData] = useState({ data: [], total: 0 });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [rowCountState, setRowCountState] = useState(bookingsData.total || 0);
+  const [notice, setNotice] = useState('');
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedBookingId, setSelectedBookingId] = useState(null);
+  const [updating, setUpdating] = useState(false);
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
-      const apiParams = {
-        page: paginationModel.page + 1, // API is 1-based, DataGrid is 0-based
+      const response = await getAllBookings({
+        page: paginationModel.page + 1,
         limit: paginationModel.pageSize,
-      };
-      const response = await getAllBookings(apiParams);
+      });
       setBookingsData({ data: response.data, total: response.pagination.total });
     } catch (err) {
       console.error('Error fetching bookings:', err);
-      setError('Failed to fetch bookings.');
+      setError('We couldn’t load bookings. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -111,202 +94,224 @@ const BookingsPage = () => {
     fetchBookings();
   }, [fetchBookings]);
 
-  useEffect(() => {
-    setRowCountState((prev) => (bookingsData.total !== undefined ? bookingsData.total : prev));
-  }, [bookingsData.total]);
-
-  const handleMenuClick = (event, bookingId) => {
-    setAnchorEl(event.currentTarget);
-    setSelectedBookingId(bookingId);
-  };
-
-  const handleMenuClose = () => {
+  const closeMenu = () => {
     setAnchorEl(null);
     setSelectedBookingId(null);
   };
 
   const handleStatusUpdate = async (newStatus) => {
-    if (!selectedBookingId) return;
+    if (!selectedBookingId || updating) return;
+    setUpdating(true);
+    setError('');
     try {
       await updateBookingStatus(selectedBookingId, newStatus);
-      setBookingsData((prev) => ({
-        ...prev,
-        data: prev.data.map((booking) =>
+      setBookingsData((previous) => ({
+        ...previous,
+        data: previous.data.map((booking) =>
           booking.id === selectedBookingId ? { ...booking, status: newStatus } : booking
         ),
       }));
+      setNotice('Booking status updated.');
+      window.setTimeout(() => setNotice(''), 3000);
+      closeMenu();
     } catch (err) {
-      console.error('Failed to update status', err);
+      console.error('Failed to update booking status:', err);
+      setError(err.response?.data?.message || 'Could not update the booking status.');
     } finally {
-      handleMenuClose();
+      setUpdating(false);
     }
   };
 
   const columns = [
     {
-      field: 'user.name',
-      headerName: 'Customer Name',
-      flex: 1,
-      minWidth: 150,
-      filterable: true,
-      sortable: true,
+      field: 'customer',
+      headerName: 'Customer',
+      flex: 1.1,
+      minWidth: 180,
+      sortable: false,
       valueGetter: (value, row) => row.user?.name || 'N/A',
+      renderCell: (params) => (
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-[#303a32]">{params.row.user?.name || 'N/A'}</p>
+          <p className="truncate text-[11px] text-[#929990]">{params.row.user?.email || 'No email'}</p>
+        </div>
+      ),
     },
     {
-      field: 'user.email',
-      headerName: 'Customer Email',
-      flex: 1.5,
-      minWidth: 200,
-      filterable: true,
-      sortable: true,
-      valueGetter: (value, row) => row.user?.email || 'N/A',
-    },
-    {
-      field: 'workshop.title',
+      field: 'workshop',
       headerName: 'Workshop',
-      flex: 1.5,
-      minWidth: 200,
-      filterable: true,
-      sortable: true,
+      flex: 1.2,
+      minWidth: 190,
+      sortable: false,
       valueGetter: (value, row) => row.workshop?.title || 'N/A',
+      renderCell: (params) => (
+        <span className="truncate font-medium text-[#59645a]">{params.row.workshop?.title || 'N/A'}</span>
+      ),
     },
     {
       field: 'timeSlot',
-      headerName: 'Time Slot',
-      flex: 1,
+      headerName: 'Time slot',
+      flex: 0.9,
       minWidth: 150,
       sortable: false,
-      valueGetter: (value, row) => `${row.timeSlot?.startTime} - ${row.timeSlot?.endTime}`,
+      valueGetter: (value, row) => row.timeSlot
+        ? `${row.timeSlot.startTime} - ${row.timeSlot.endTime}`
+        : 'N/A',
     },
     {
       field: 'status',
       headerName: 'Status',
-      width: 120,
-      filterable: true,
-      sortable: true,
-      renderCell: (params) => <BookingStatusChip status={params.row.status} />,
+      width: 140,
+      sortable: false,
+      renderCell: (params) => <BookingStatus status={params.row.status} />,
     },
     {
       field: 'actions',
-      headerName: 'Actions',
-      width: 100,
+      headerName: '',
+      width: 72,
       sortable: false,
+      filterable: false,
+      align: 'center',
       renderCell: (params) => (
         <button
-          onClick={(e) => handleMenuClick(e, params.row.id)}
-          className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-100 rounded-full transition-all duration-300"
+          type="button"
+          aria-label={`Change status for booking ${params.row.id}`}
+          onClick={(event) => {
+            setAnchorEl(event.currentTarget);
+            setSelectedBookingId(params.row.id);
+          }}
+          className="rounded-lg p-2 text-[#899188] transition hover:bg-[#f1f4f0] hover:text-[#426b55]"
         >
-          <EllipsisVerticalIcon className="w-5 h-5" />
+          <EllipsisVerticalIcon className="h-5 w-5" />
         </button>
       ),
     },
   ];
 
+  const counts = bookingsData.data.reduce((result, booking) => {
+    result[booking.status] = (result[booking.status] || 0) + 1;
+    return result;
+  }, {});
+
   return (
-    <div className="min-h-screen bg-gray-100 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center">
-            <img
-              src="/images/cover.jpg"
-              alt="Bookings"
-              className="h-10 w-10 rounded-full object-cover mr-3"
-              onError={() => console.error('Header image failed to load: /images/workshop.jpg')}
-            />
-            <h1 className="text-3xl font-bold text-gray-800 font-poppins sm:text-2xl">
-              Bookings Management
-            </h1>
-          </div>
+    <div className="space-y-6">
+      <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <p className="muted-label">Reservations overview</p>
+          <h2 className="page-heading mt-2 text-[30px] font-bold leading-tight text-[#20251f] sm:text-[34px]">
+            Bookings
+          </h2>
+          <p className="mt-2 text-sm text-[#7b837b]">Review customer reservations and manage their booking status.</p>
         </div>
+        <button
+          type="button"
+          onClick={fetchBookings}
+          disabled={loading}
+          className="inline-flex h-10 items-center justify-center gap-2 self-start rounded-lg border border-[#e2e7e0] bg-white px-3.5 text-xs font-semibold text-[#5d685e] transition hover:border-[#cbd8cc] hover:bg-[#fafbf9] disabled:opacity-50 sm:self-auto"
+        >
+          <ArrowPathIcon className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
+      </section>
 
-        {/* Error Alert */}
-        {error && (
-          <div className="bg-red-100 text-red-700 p-4 rounded-lg mb-6 font-poppins text-sm">
-            {error}
-          </div>
-        )}
-
-        {/* Data Grid */}
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-          <ThemeProvider theme={theme}>
-            <DataGrid
-              rows={bookingsData.data}
-              columns={columns}
-              loading={loading}
-              rowCount={rowCountState}
-              pageSizeOptions={[10, 25, 50]}
-              paginationModel={paginationModel}
-              paginationMode="server"
-              onPaginationModelChange={setPaginationModel}
-              getRowId={(row) => row.id}
-              disableRowSelectionOnClick
-              className="h-[650px] w-full"
-              slots={{
-                noRowsOverlay: () => (
-                  <div className="flex items-center justify-center h-full text-gray-600 font-poppins">
-                    No bookings available.
-                  </div>
-                ),
-                loadingOverlay: () => (
-                  <div className="flex items-center justify-center h-full">
-                    <svg
-                      className="animate-spin h-8 w-8 text-teal-500"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                  </div>
-                ),
-              }}
-            />
-          </ThemeProvider>
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="surface p-4">
+          <p className="text-xs font-medium text-[#7b837b]">Total bookings</p>
+          <p className="page-heading mt-2 text-2xl font-bold text-[#20251f]">{bookingsData.total}</p>
         </div>
+        <div className="surface p-4">
+          <p className="text-xs font-medium text-[#7b837b]">Pending on page</p>
+          <p className="page-heading mt-2 text-2xl font-bold text-[#98713a]">{counts.PENDING || 0}</p>
+        </div>
+        <div className="surface p-4">
+          <p className="text-xs font-medium text-[#7b837b]">Confirmed on page</p>
+          <p className="page-heading mt-2 text-2xl font-bold text-[#426b55]">{counts.CONFIRMED || 0}</p>
+        </div>
+        <div className="surface p-4">
+          <p className="text-xs font-medium text-[#7b837b]">Canceled on page</p>
+          <p className="page-heading mt-2 text-2xl font-bold text-[#a34d40]">{counts.CANCELED || 0}</p>
+        </div>
+      </section>
 
-        {/* Status Update Menu */}
-        {anchorEl && (
+      {notice && <div role="status" className="rounded-xl border border-[#dce9dd] bg-[#f1f7f1] px-4 py-3 text-sm font-medium text-[#426b55]">{notice}</div>}
+      {error && (
+        <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-[#f0d9d5] bg-[#fbf2f0] px-4 py-3 text-sm text-[#a34d40]">
+          <span>{error}</span>
+          <button type="button" onClick={fetchBookings} className="shrink-0 font-semibold hover:underline">Retry</button>
+        </div>
+      )}
+
+      <section className="surface overflow-hidden">
+        <div className="flex items-center justify-between border-b border-[#eef0ec] px-5 py-4 sm:px-6">
+          <div>
+            <h3 className="text-sm font-semibold text-[#303a32]">All bookings</h3>
+            <p className="mt-1 text-xs text-[#929990]">Customer and reservation details</p>
+          </div>
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#edf3ee] text-[#557b60]">
+            <ClipboardDocumentListIcon className="h-[18px] w-[18px]" />
+          </span>
+        </div>
+        <ThemeProvider theme={theme}>
+          <DataGrid
+            rows={bookingsData.data}
+            columns={columns}
+            loading={loading}
+            rowCount={bookingsData.total}
+            pageSizeOptions={[10, 25, 50]}
+            paginationModel={paginationModel}
+            paginationMode="server"
+            onPaginationModelChange={setPaginationModel}
+            getRowId={(row) => row.id}
+            disableRowSelectionOnClick
+            sx={{
+              border: 0,
+              minHeight: 420,
+              '& .MuiDataGrid-cell:focus, & .MuiDataGrid-columnHeader:focus': { outline: 'none' },
+            }}
+            slots={{
+              noRowsOverlay: () => (
+                <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f1f4f0] text-[#829082]">
+                    <ClipboardDocumentListIcon className="h-6 w-6" />
+                  </span>
+                  <p className="mt-3 text-sm font-semibold text-[#59645a]">No bookings found</p>
+                  <p className="mt-1 text-xs text-[#929990]">New reservations will appear here.</p>
+                </div>
+              ),
+            }}
+          />
+        </ThemeProvider>
+      </section>
+
+      {anchorEl && (
+        <>
+          <button type="button" aria-label="Close booking actions" className="fixed inset-0 z-40 cursor-default" onClick={closeMenu} />
           <div
-            className="fixed z-50 bg-white shadow-lg rounded-lg w-48 sm:w-40 font-poppins border border-gray-200"
+            className="fixed z-50 w-48 rounded-xl border border-[#e8ebe6] bg-white p-1.5 shadow-xl"
             style={{
-              top: anchorEl.getBoundingClientRect().bottom + window.scrollY,
-              left: anchorEl.getBoundingClientRect().left + window.scrollX,
+              top: anchorEl.getBoundingClientRect().bottom + 6,
+              left: Math.max(12, anchorEl.getBoundingClientRect().right - 192),
             }}
           >
-            <button
-              onClick={() => handleStatusUpdate('CONFIRMED')}
-              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-green-100 hover:text-green-700 transition-all duration-200"
-            >
-              Set to Confirmed
-            </button>
-            <button
-              onClick={() => handleStatusUpdate('CANCELED')}
-              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-red-100 hover:text-red-700 transition-all duration-200"
-            >
-              Set to Canceled
-            </button>
-            <button
-              onClick={() => handleStatusUpdate('PENDING')}
-              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-amber-100 hover:text-amber-700 transition-all duration-200"
-            >
-              Set to Pending
-            </button>
+            {[
+              { value: 'CONFIRMED', label: 'Mark confirmed', icon: CheckIcon },
+              { value: 'PENDING', label: 'Mark pending', icon: ClockIcon },
+              { value: 'CANCELED', label: 'Cancel booking', icon: XMarkIcon },
+            ].map(({ value, label, icon: Icon }) => (
+              <button
+                key={value}
+                type="button"
+                disabled={updating}
+                onClick={() => handleStatusUpdate(value)}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-xs font-medium text-[#59645a] transition hover:bg-[#f5f7f4] disabled:opacity-50"
+              >
+                <Icon className="h-4 w-4 text-[#899188]" />
+                {label}
+              </button>
+            ))}
           </div>
-        )}
-      </div>
+        </>
+      )}
     </div>
   );
 };
