@@ -5,9 +5,29 @@ import { z } from 'zod';
 import { PlusIcon, MinusIcon, SparklesIcon, CalendarDaysIcon, UserGroupIcon, ClockIcon, XMarkIcon } from '@heroicons/react/24/solid';
 
 // Zod schema for frontend validation. Matches backend.
+const toTimeInputValue = (value = '') => {
+  if (!value) return '';
+  const match = value.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) return value;
+  let hours = Number(match[1]) % 12;
+  if (match[3].toUpperCase() === 'PM') hours += 12;
+  return `${String(hours).padStart(2, '0')}:${match[2]}`;
+};
+
+const toApiTimeValue = (value = '') => {
+  if (!value) return '';
+  const [rawHours, minutes] = value.split(':');
+  const hours = Number(rawHours);
+  const suffix = hours >= 12 ? 'PM' : 'AM';
+  return `${String(hours % 12 || 12).padStart(2, '0')}:${minutes} ${suffix}`;
+};
+
 const timeSlotSchema = z.object({
   startTime: z.string().min(1, 'Start time is required'),
   endTime: z.string().min(1, 'End time is required'),
+}).refine(({ startTime, endTime }) => !startTime || !endTime || endTime > startTime, {
+  message: 'End time must be after start time',
+  path: ['endTime'],
 });
 
 const workshopSchema = z.object({
@@ -26,8 +46,11 @@ const WorkshopForm = ({ onSubmit, onCancel, defaultValues = {}, isOpen = true })
       description: '',
       date: '',
       maxCapacity: 10,
-      timeSlots: [{ startTime: '10:00 AM', endTime: '12:00 PM' }],
       ...defaultValues,
+      timeSlots: (defaultValues.timeSlots || [{ startTime: '10:00 AM', endTime: '12:00 PM' }]).map((slot) => ({
+        startTime: toTimeInputValue(slot.startTime),
+        endTime: toTimeInputValue(slot.endTime),
+      })),
     },
   });
 
@@ -35,6 +58,16 @@ const WorkshopForm = ({ onSubmit, onCancel, defaultValues = {}, isOpen = true })
     control,
     name: 'timeSlots',
   });
+
+  const handleFormSubmit = (values) => {
+    onSubmit({
+      ...values,
+      timeSlots: values.timeSlots.map((slot) => ({
+        startTime: toApiTimeValue(slot.startTime),
+        endTime: toApiTimeValue(slot.endTime),
+      })),
+    });
+  };
 
   if (!isOpen) return null;
 
@@ -67,7 +100,7 @@ const WorkshopForm = ({ onSubmit, onCancel, defaultValues = {}, isOpen = true })
             </button>
           </div>
           
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+          <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
             {/* Basic Information Section */}
             <div className="bg-slate-50 rounded-xl p-6">
               <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center space-x-2">
@@ -218,9 +251,9 @@ const WorkshopForm = ({ onSubmit, onCancel, defaultValues = {}, isOpen = true })
                               </label>
                               <input
                                 {...field}
-                                type="text"
-                                className={`w-full px-3 py-2 bg-slate-50 border ${errors.timeSlots?.[index]?.startTime ? 'border-red-300' : 'border-slate-300'} rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200`}
-                                placeholder="10:00 AM"
+                                type="time"
+                                className={`w-full px-3 py-2.5 bg-white border ${errors.timeSlots?.[index]?.startTime ? 'border-red-300' : 'border-slate-200'} rounded-xl text-slate-700 shadow-sm focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600 transition-all duration-200`}
+                                aria-label="Start time"
                               />
                               {errors.timeSlots?.[index]?.startTime && (
                                 <p className="mt-1 text-xs text-red-600">{errors.timeSlots[index].startTime.message}</p>
@@ -239,9 +272,10 @@ const WorkshopForm = ({ onSubmit, onCancel, defaultValues = {}, isOpen = true })
                               </label>
                               <input
                                 {...field}
-                                type="text"
-                                className={`w-full px-3 py-2 bg-slate-50 border ${errors.timeSlots?.[index]?.endTime ? 'border-red-300' : 'border-slate-300'} rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all duration-200`}
-                                placeholder="12:00 PM"
+                                type="time"
+                                min={undefined}
+                                className={`w-full px-3 py-2.5 bg-white border ${errors.timeSlots?.[index]?.endTime ? 'border-red-300' : 'border-slate-200'} rounded-xl text-slate-700 shadow-sm focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600 transition-all duration-200`}
+                                aria-label="End time"
                               />
                               {errors.timeSlots?.[index]?.endTime && (
                                 <p className="mt-1 text-xs text-red-600">{errors.timeSlots[index].endTime.message}</p>
