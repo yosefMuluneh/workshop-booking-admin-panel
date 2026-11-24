@@ -157,7 +157,7 @@ const WorkshopsPage = () => {
       width: 150,
       filterable: true,
       sortable: true,
-      valueGetter: (value) => (value ? new Date(value).toLocaleDateString() : 'N/A'),
+      valueGetter: (value) => (value ? new Date(value).toLocaleDateString('en-US', { timeZone: 'Africa/Addis_Ababa' }) : 'N/A'),
     },
     {
       field: 'maxCapacity',
