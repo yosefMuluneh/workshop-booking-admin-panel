@@ -82,6 +82,22 @@ const theme = createTheme({
   },
 });
 
+const getBusinessDateKey = (date = new Date()) => {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Africa/Addis_Ababa',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+
+  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+  return `${values.year}-${values.month}-${values.day}`;
+};
+
+// Workshop dates are stored as date-only values normalized to midnight UTC.
+const isPastWorkshopDate = (date) =>
+  new Date(date).toISOString().slice(0, 10) < getBusinessDateKey();
+
 const WorkshopsPage = () => {
   const [workshops, setWorkshops] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -141,7 +157,7 @@ const WorkshopsPage = () => {
       width: 150,
       filterable: true,
       sortable: true,
-      valueGetter: (value) => (value ? new Date(value).toLocaleDateString() : 'N/A'),
+      valueGetter: (value) => (value ? new Date(value).toLocaleDateString('en-US', { timeZone: 'Africa/Addis_Ababa' }) : 'N/A'),
     },
     {
       field: 'maxCapacity',
@@ -167,8 +183,10 @@ const WorkshopsPage = () => {
       filterable: true,
       sortable: true,
       renderCell: (params) => (
-       new Date(params.row.date) < new Date() ? (<Chip label="Out Dated" color="default" size="small" />) : params.row.deletedAt ? (
+        params.row.deletedAt ? (
           <Chip label="Archived" color="default" size="small" />
+        ) : isPastWorkshopDate(params.row.date) ? (
+          <Chip label="Out Dated" color="default" size="small" />
         ) : (
           <Chip label="Active" color="success" size="small" />
         )
