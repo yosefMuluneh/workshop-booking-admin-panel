@@ -2,9 +2,11 @@ import React from 'react';
 import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { PlusIcon, MinusIcon, SparklesIcon, CalendarDaysIcon, UserGroupIcon, ClockIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import {
+  PlusIcon, MinusIcon, CalendarDaysIcon, UserGroupIcon, ClockIcon,
+  XMarkIcon, SparklesIcon, InformationCircleIcon,
+} from '@heroicons/react/24/outline';
 
-// Zod schema for frontend validation. Matches backend.
 const toTimeInputValue = (value = '') => {
   if (!value) return '';
   const match = value.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
@@ -23,22 +25,25 @@ const toApiTimeValue = (value = '') => {
 };
 
 const timeSlotSchema = z.object({
-  startTime: z.string().min(1, 'Start time is required'),
-  endTime: z.string().min(1, 'End time is required'),
+  startTime: z.string().min(1, 'Choose a start time'),
+  endTime: z.string().min(1, 'Choose an end time'),
 }).refine(({ startTime, endTime }) => !startTime || !endTime || endTime > startTime, {
-  message: 'End time must be after start time',
+  message: 'End time must be later than start time',
   path: ['endTime'],
 });
 
 const workshopSchema = z.object({
-  title: z.string().min(3, 'Title is required'),
-  description: z.string().min(10, 'Description is required'),
-  date: z.string().min(1, 'Date is required'),
-  maxCapacity: z.coerce.number().int().positive('Must be a positive number'),
-  timeSlots: z.array(timeSlotSchema).min(1, 'At least one time slot is required'),
+  title: z.string().min(3, 'Enter at least 3 characters'),
+  description: z.string().min(10, 'Enter at least 10 characters'),
+  date: z.string().min(1, 'Choose a workshop date'),
+  maxCapacity: z.coerce.number().int().positive('Capacity must be greater than zero'),
+  timeSlots: z.array(timeSlotSchema).min(1, 'Add at least one time slot'),
 });
 
-const WorkshopForm = ({ onSubmit, onCancel, defaultValues = {}, isOpen = true }) => {
+const inputClass = 'mt-2 w-full rounded-xl border border-[#e3e8e1] bg-white px-4 py-3 text-sm text-[#303a32] shadow-sm outline-none transition placeholder:text-[#a0a89f] hover:border-[#cbd7ca] focus:border-[#426b55] focus:ring-4 focus:ring-[#426b55]/10';
+const labelClass = 'block text-xs font-bold uppercase tracking-[.08em] text-[#69756a]';
+
+const WorkshopForm = ({ onSubmit, onCancel, defaultValues = {}, isOpen = true, isSubmitting = false }) => {
   const { control, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(workshopSchema),
     defaultValues: {
@@ -54,289 +59,99 @@ const WorkshopForm = ({ onSubmit, onCancel, defaultValues = {}, isOpen = true })
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: 'timeSlots',
-  });
+  const { fields, append, remove } = useFieldArray({ control, name: 'timeSlots' });
 
-  const handleFormSubmit = (values) => {
-    onSubmit({
-      ...values,
-      timeSlots: values.timeSlots.map((slot) => ({
-        startTime: toApiTimeValue(slot.startTime),
-        endTime: toApiTimeValue(slot.endTime),
-      })),
-    });
-  };
+  const handleFormSubmit = (values) => onSubmit({
+    ...values,
+    timeSlots: values.timeSlots.map((slot) => ({
+      startTime: toApiTimeValue(slot.startTime),
+      endTime: toApiTimeValue(slot.endTime),
+    })),
+  });
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        {/* Backdrop */}
-        <div className="fixed inset-0 transition-opacity bg-black/50 backdrop-blur-sm" onClick={onCancel}></div>
-        
-        {/* Modal */}
-        <div className="inline-block w-full max-w-4xl p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white/95 backdrop-blur-md shadow-2xl rounded-2xl border border-white/20">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center">
-                <SparklesIcon className="w-6 h-6 text-white" />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-[#17231f]/45 px-3 py-6 backdrop-blur-sm sm:px-6" onMouseDown={(event) => { if (event.target === event.currentTarget && !isSubmitting) onCancel(); }}>
+      <section role="dialog" aria-modal="true" aria-labelledby="workshop-modal-title" className="my-auto w-full max-w-3xl overflow-hidden rounded-[1.75rem] border border-white/70 bg-[#fbfcf9] shadow-[0_30px_100px_rgba(13,32,22,.28)]">
+        <header className="relative overflow-hidden border-b border-[#e8ede6] bg-white px-6 py-6 sm:px-8">
+          <div className="absolute -right-12 -top-20 h-48 w-48 rounded-full border border-[#e9eee7]" />
+          <div className="absolute -right-2 -top-10 h-32 w-32 rounded-full border border-[#e9eee7]" />
+          <div className="relative flex items-start justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#edf4ee] text-[#426b55]"><SparklesIcon className="h-6 w-6" /></span>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[.18em] text-[#64816b]">Workshop management</p>
+                <h2 id="workshop-modal-title" className="mt-1 text-xl font-bold tracking-tight text-[#26342a] sm:text-2xl">Create new workshop</h2>
+                <p className="mt-1 text-sm text-[#879087]">Set up the details and schedule for your next session.</p>
+              </div>
+            </div>
+            <button type="button" onClick={onCancel} disabled={isSubmitting} aria-label="Close modal" className="rounded-xl p-2 text-[#879087] transition hover:bg-[#f2f5f0] hover:text-[#34443a] disabled:opacity-40"><XMarkIcon className="h-5 w-5" /></button>
+          </div>
+        </header>
+
+        <form onSubmit={handleSubmit(handleFormSubmit)} className="max-h-[calc(100vh-190px)] space-y-6 overflow-y-auto px-6 py-6 sm:px-8">
+          <section className="rounded-2xl border border-[#e8ede6] bg-white p-5 sm:p-6">
+            <div className="mb-5 flex items-center gap-3">
+              <span className="h-7 w-1 rounded-full bg-[#64866a]" />
+              <div><h3 className="text-sm font-bold text-[#34443a]">Basic information</h3><p className="mt-0.5 text-xs text-[#929b91]">Give participants a clear idea of what to expect.</p></div>
+            </div>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className={labelClass}>Workshop title <span className="text-[#b75b4d]">*</span></label>
+                <Controller name="title" control={control} render={({ field }) => <input {...field} className={inputClass} placeholder="e.g. Introduction to Product Design" />} />
+                {errors.title && <p className="mt-1.5 text-xs font-medium text-[#b75b4d]">{errors.title.message}</p>}
+              </div>
+              <div className="sm:col-span-2">
+                <label className={labelClass}>Description <span className="text-[#b75b4d]">*</span></label>
+                <Controller name="description" control={control} render={({ field }) => <textarea {...field} rows={4} className={`${inputClass} resize-y leading-6`} placeholder="Describe what participants will learn, build, or take away..." />} />
+                {errors.description && <p className="mt-1.5 text-xs font-medium text-[#b75b4d]">{errors.description.message}</p>}
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-slate-800">
-                  Create New Workshop
-                </h2>
-                <p className="text-slate-600">Build an engaging learning experience</p>
+                <label className={labelClass}><CalendarDaysIcon className="mr-1.5 inline h-4 w-4" /> Workshop date <span className="text-[#b75b4d]">*</span></label>
+                <Controller name="date" control={control} render={({ field }) => <input {...field} type="date" min={new Date().toISOString().slice(0, 10)} className={inputClass} />} />
+                {errors.date && <p className="mt-1.5 text-xs font-medium text-[#b75b4d]">{errors.date.message}</p>}
+              </div>
+              <div>
+                <label className={labelClass}><UserGroupIcon className="mr-1.5 inline h-4 w-4" /> Maximum capacity <span className="text-[#b75b4d]">*</span></label>
+                <Controller name="maxCapacity" control={control} render={({ field }) => <input {...field} type="number" min="1" max="500" className={inputClass} placeholder="e.g. 25" />} />
+                {errors.maxCapacity && <p className="mt-1.5 text-xs font-medium text-[#b75b4d]">{errors.maxCapacity.message}</p>}
               </div>
             </div>
-            <button
-              onClick={onCancel}
-              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all duration-200"
-            >
-              <XMarkIcon className="w-6 h-6" />
-            </button>
-          </div>
-          
-          <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-8">
-            {/* Basic Information Section */}
-            <div className="bg-slate-50 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center space-x-2">
-                <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
-                <span>Basic Information</span>
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="col-span-1 sm:col-span-2">
-                  <Controller
-                    name="title"
-                    control={control}
-                    render={({ field }) => (
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">
-                          Workshop Title <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          {...field}
-                          type="text"
-                          className={`w-full px-4 py-3 bg-white border-2 ${errors.title ? 'border-red-300 focus:border-red-500' : 'border-slate-200 focus:border-indigo-500'} rounded-xl focus:ring-2 focus:ring-indigo-500/20 transition-all duration-200`}
-                          placeholder="e.g., Advanced React Patterns"
-                        />
-                        {errors.title && (
-                          <p className="mt-2 text-sm text-red-600 flex items-center space-x-1">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.267 19.5c-.77.833.192 2.5 1.732 2.5z" />
-                            </svg>
-                            <span>{errors.title.message}</span>
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  />
-                </div>
-                <div className="col-span-1 sm:col-span-2">
-                  <Controller
-                    name="description"
-                    control={control}
-                    render={({ field }) => (
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">
-                          Description <span className="text-red-500">*</span>
-                        </label>
-                        <textarea
-                          {...field}
-                          rows={4}
-                          className={`w-full px-4 py-3 bg-white border-2 ${errors.description ? 'border-red-300 focus:border-red-500' : 'border-slate-200 focus:border-indigo-500'} rounded-xl focus:ring-2 focus:ring-indigo-500/20 transition-all duration-200 resize-none`}
-                          placeholder="Describe what participants will learn and experience..."
-                        />
-                        {errors.description && (
-                          <p className="mt-2 text-sm text-red-600 flex items-center space-x-1">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.267 19.5c-.77.833.192 2.5 1.732 2.5z" />
-                            </svg>
-                            <span>{errors.description.message}</span>
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  />
-                </div>
-                <div>
-                  <Controller
-                    name="date"
-                    control={control}
-                    render={({ field }) => (
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center space-x-2">
-                          <CalendarDaysIcon className="w-4 h-4 text-indigo-500" />
-                          <span>Date <span className="text-red-500">*</span></span>
-                        </label>
-                        <input
-                          {...field}
-                          type="date"
-                          className={`w-full px-4 py-3 bg-white border-2 ${errors.date ? 'border-red-300 focus:border-red-500' : 'border-slate-200 focus:border-indigo-500'} rounded-xl focus:ring-2 focus:ring-indigo-500/20 transition-all duration-200`}
-                        />
-                        {errors.date && (
-                          <p className="mt-2 text-sm text-red-600 flex items-center space-x-1">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.267 19.5c-.77.833.192 2.5 1.732 2.5z" />
-                            </svg>
-                            <span>{errors.date.message}</span>
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  />
-                </div>
-                <div>
-                  <Controller
-                    name="maxCapacity"
-                    control={control}
-                    render={({ field }) => (
-                      <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-2 flex items-center space-x-2">
-                          <UserGroupIcon className="w-4 h-4 text-indigo-500" />
-                          <span>Max Capacity <span className="text-red-500">*</span></span>
-                        </label>
-                        <input
-                          {...field}
-                          type="number"
-                          min="1"
-                          max="500"
-                          className={`w-full px-4 py-3 bg-white border-2 ${errors.maxCapacity ? 'border-red-300 focus:border-red-500' : 'border-slate-200 focus:border-indigo-500'} rounded-xl focus:ring-2 focus:ring-indigo-500/20 transition-all duration-200`}
-                          placeholder="e.g., 25"
-                        />
-                        {errors.maxCapacity && (
-                          <p className="mt-2 text-sm text-red-600 flex items-center space-x-1">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.267 19.5c-.77.833.192 2.5 1.732 2.5z" />
-                            </svg>
-                            <span>{errors.maxCapacity.message}</span>
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  />
-                </div>
-              </div>
+          </section>
+
+          <section className="rounded-2xl border border-[#e8ede6] bg-white p-5 sm:p-6">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3"><span className="h-7 w-1 rounded-full bg-[#64866a]" /><div><h3 className="text-sm font-bold text-[#34443a]">Schedule and time slots</h3><p className="mt-0.5 text-xs text-[#929b91]">Choose start and end times using the time picker.</p></div></div>
+              <span className="rounded-full bg-[#edf4ee] px-3 py-1.5 text-xs font-bold text-[#426b55]">{fields.length} {fields.length === 1 ? 'slot' : 'slots'}</span>
             </div>
-            {/* Time Slots Section */}
-            <div className="bg-slate-50 rounded-xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-slate-800 flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
-                  <span>Time Slots <span className="text-red-500">*</span></span>
-                </h3>
-                <span className="text-sm bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full font-medium">
-                  {fields.length} slot{fields.length !== 1 ? 's' : ''}
-                </span>
-              </div>
-              <div className="space-y-4">
-                {fields.map((item, index) => (
-                  <div key={item.id} className="group bg-white rounded-lg p-4 border-2 border-slate-200 hover:border-indigo-300 transition-all duration-200">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-                        <ClockIcon className="w-4 h-4 text-white" />
-                      </div>
-                      
-                      <div className="flex-1 grid grid-cols-2 gap-4">
-                        <Controller
-                          name={`timeSlots.${index}.startTime`}
-                          control={control}
-                          render={({ field }) => (
-                            <div>
-                              <label className="block text-sm font-semibold text-slate-700 mb-1">
-                                Start Time
-                              </label>
-                              <input
-                                {...field}
-                                type="time"
-                                className={`w-full px-3 py-2.5 bg-white border ${errors.timeSlots?.[index]?.startTime ? 'border-red-300' : 'border-slate-200'} rounded-xl text-slate-700 shadow-sm focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600 transition-all duration-200`}
-                                aria-label="Start time"
-                              />
-                              {errors.timeSlots?.[index]?.startTime && (
-                                <p className="mt-1 text-xs text-red-600">{errors.timeSlots[index].startTime.message}</p>
-                              )}
-                            </div>
-                          )}
-                        />
-                        
-                        <Controller
-                          name={`timeSlots.${index}.endTime`}
-                          control={control}
-                          render={({ field }) => (
-                            <div>
-                              <label className="block text-sm font-semibold text-slate-700 mb-1">
-                                End Time
-                              </label>
-                              <input
-                                {...field}
-                                type="time"
-                                min={undefined}
-                                className={`w-full px-3 py-2.5 bg-white border ${errors.timeSlots?.[index]?.endTime ? 'border-red-300' : 'border-slate-200'} rounded-xl text-slate-700 shadow-sm focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-600 transition-all duration-200`}
-                                aria-label="End time"
-                              />
-                              {errors.timeSlots?.[index]?.endTime && (
-                                <p className="mt-1 text-xs text-red-600">{errors.timeSlots[index].endTime.message}</p>
-                              )}
-                            </div>
-                          )}
-                        />
-                      </div>
-                      
-                      <button
-                        type="button"
-                        onClick={() => remove(index)}
-                        disabled={fields.length <= 1}
-                        className={`p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all duration-200 ${
-                          fields.length <= 1 ? 'opacity-50 cursor-not-allowed' : 'opacity-0 group-hover:opacity-100'
-                        }`}
-                      >
-                        <MinusIcon className="w-4 h-4" />
-                      </button>
-                    </div>
+            <div className="space-y-3">
+              {fields.map((item, index) => (
+                <div key={item.id} className="rounded-2xl border border-[#e9ede7] bg-[#fafbf8] p-4 transition hover:border-[#d2dfd2]">
+                  <div className="mb-3 flex items-center justify-between">
+                    <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.08em] text-[#718071]"><ClockIcon className="h-4 w-4 text-[#64866a]" /> Session {index + 1}</span>
+                    <button type="button" onClick={() => remove(index)} disabled={fields.length <= 1 || isSubmitting} className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-[#a16a62] transition hover:bg-[#fbefed] disabled:cursor-not-allowed disabled:opacity-35"><MinusIcon className="h-3.5 w-3.5" /> Remove</button>
                   </div>
-                ))}
-              </div>
-              
-              {errors.timeSlots && (
-                <p className="mt-2 text-sm text-red-600 flex items-center space-x-1">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.267 19.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                  <span>{errors.timeSlots.message}</span>
-                </p>
-              )}
-              
-              <button
-                type="button"
-                onClick={() => append({ startTime: '', endTime: '' })}
-                className="mt-4 w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-3 rounded-lg flex items-center justify-center space-x-2 hover:from-indigo-600 hover:to-purple-700 transition-all duration-300 hover:scale-[1.02] shadow-sm"
-              >
-                <PlusIcon className="w-5 h-5" />
-                <span className="font-medium">Add Time Slot</span>
-              </button>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <Controller name={`timeSlots.${index}.startTime`} control={control} render={({ field }) => <div><label className={labelClass}>Start time</label><input {...field} type="time" className={inputClass} />{errors.timeSlots?.[index]?.startTime && <p className="mt-1.5 text-xs font-medium text-[#b75b4d]">{errors.timeSlots[index].startTime.message}</p>}</div>} />
+                    <Controller name={`timeSlots.${index}.endTime`} control={control} render={({ field }) => <div><label className={labelClass}>End time</label><input {...field} type="time" className={inputClass} />{errors.timeSlots?.[index]?.endTime && <p className="mt-1.5 text-xs font-medium text-[#b75b4d]">{errors.timeSlots[index].endTime.message}</p>}</div>} />
+                  </div>
+                </div>
+              ))}
             </div>
-            {/* Action Buttons */}
-            <div className="flex justify-end space-x-4 pt-6 border-t border-slate-200">
-              <button
-                type="button"
-                onClick={onCancel}
-                className="px-6 py-3 text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-all duration-200 font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all duration-300 hover:scale-105 shadow-lg font-medium"
-              >
-                Create Workshop
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
+            {errors.timeSlots?.message && <p className="mt-2 text-xs font-medium text-[#b75b4d]">{errors.timeSlots.message}</p>}
+            <button type="button" onClick={() => append({ startTime: '', endTime: '' })} disabled={isSubmitting} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#b9cbbd] bg-[#f6f9f5] px-4 py-3 text-sm font-bold text-[#426b55] transition hover:border-[#789b7d] hover:bg-[#edf4ee] disabled:opacity-50"><PlusIcon className="h-4 w-4" /> Add another time slot</button>
+            <div className="mt-4 flex items-start gap-2 rounded-xl bg-[#f5f7f2] px-3.5 py-3 text-xs leading-5 text-[#7b867b]"><InformationCircleIcon className="mt-0.5 h-4 w-4 shrink-0 text-[#789477]" /> Use the time picker to avoid formatting mistakes. Times are saved in the workshop's existing 12-hour format.</div>
+          </section>
+
+          <footer className="flex flex-col-reverse gap-3 border-t border-[#e9ede7] pt-5 sm:flex-row sm:justify-end">
+            <button type="button" onClick={onCancel} disabled={isSubmitting} className="rounded-full border border-[#e1e7df] px-6 py-3 text-sm font-semibold text-[#68746a] transition hover:bg-[#f4f6f2] disabled:opacity-50">Cancel</button>
+            <button type="submit" disabled={isSubmitting} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#426b55] px-7 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-[#345640] disabled:cursor-wait disabled:opacity-70">
+              {isSubmitting ? <><svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle className="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" /><path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /></svg>Creating workshop…</> : 'Create workshop'}
+            </button>
+          </footer>
+        </form>
+      </section>
     </div>
   );
 };
