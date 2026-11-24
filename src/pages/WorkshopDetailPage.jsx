@@ -284,30 +284,6 @@ const WorkshopDetailPage = () => {
               </span>
             </div>
           </div>
-
-          <div className="flex shrink-0 flex-wrap gap-2">
-            {isArchived ? (
-              <button
-                type="button"
-                disabled={isExpired}
-                onClick={handleRestore}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#426b55] px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-[#345640] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <ArrowUturnUpIcon className="h-4 w-4" />
-                Restore workshop
-              </button>
-            ) : (
-              <button
-                type="button"
-                disabled={isExpired}
-                onClick={handleArchive}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#eadbd8] bg-white px-4 text-xs font-semibold text-[#a34d40] transition hover:bg-[#fbf2f0] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <ArchiveBoxIcon className="h-4 w-4" />
-                Archive workshop
-              </button>
-            )}
-          </div>
         </div>
       </div>
 
